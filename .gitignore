@@ -171,5 +171,5 @@ cython_debug/
 .pypirc
 
 .virtualenv
-/blog-posts
+/linkedin-posts
 db/

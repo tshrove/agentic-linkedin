@@ -56,7 +56,7 @@ research = Task(
 
 write = Task(
     llm=llm,
-    description="Write an engaging LinkedIn post about the latest AI news from today, based on the research analyst’s summary. Draw inspiration from the latest news in the directory.",
+    description="Write an engaging LinkedIn post about the latest AI news from today, based on the research analyst’s summary. Draw inspiration from one of those articles.",
     expected_output='A short LinkedIn post formatted in with engaging, informative, and accessible content.',
     agent=writer,
     output_file='linkedin_post.txt',
@@ -77,6 +77,7 @@ print(_output.raw)
 
 if _output.raw:
     _client:TweepyTwitterClient = TweepyTwitterClient()
+    _client.load()
     _client.send_tweet(_output.raw)
 else:
     print('No output to tweet.')

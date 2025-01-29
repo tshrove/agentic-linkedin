@@ -1,0 +1,3 @@
+tweepy
+crewai
+crewai-tools

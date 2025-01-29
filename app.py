@@ -1,15 +1,13 @@
+import os
 from dotenv import load_dotenv
-from crewai import Agent, Task, Crew
-# Importing crewAI tools
+from crewai import Agent, Task, Crew, LLM
 from crewai_tools import (
     DirectoryReadTool,
     FileReadTool,
     WebsiteSearchTool
 )
-from crewai import LLM
-from tweepytwitterclient import TweepyTwitterClient
-# from grok_tool import GrokTool
-from perplexity_tool import PerplexityTool
+from x_api_client import XApiClient
+from tools import PerplexityTool
 
 # Load environment variables from .env file
 load_dotenv('.env')
@@ -19,7 +17,7 @@ llm = LLM(
 )
 
 # Instantiate tools
-docs_tool = DirectoryReadTool(directory='./linkedin-posts')
+docs_tool = DirectoryReadTool(directory='./x-posts')
 file_tool = FileReadTool()
 perplexity_tool = PerplexityTool()
 web_rag_tool = WebsiteSearchTool()
@@ -38,8 +36,8 @@ researcher = Agent(
 writer = Agent(
     llm=llm,
     role='Content Writer',
-    goal='Craft engaging LinkedIn post about the latest AI news from today.',
-    backstory='A skilled social media writer with a passion for technology.',
+    goal='Craft engaging Tweeter/X post about the latest AI news from today.',
+    backstory='You are passionate creative director with a passion for technology and delivery the news in an engaging way.',
     tools=[docs_tool, file_tool],
     verbose=True
 )
@@ -51,15 +49,15 @@ research = Task(
     expected_output='A summary of the top 5 latest developments from today in the Artificial Intelligence, AI, and Machine Learning industry and why it is important.',
     agent=researcher,
     verbose=True,
-    output_file='./linkedin-posts/research_summary.txt'
+    output_file='./x-posts/summary.txt'
 )
 
 write = Task(
     llm=llm,
-    description="Write an engaging LinkedIn post about the latest AI news from today, based on the research analyst’s summary. Draw inspiration from one of those articles.",
-    expected_output='A short LinkedIn post formatted in with engaging, informative, and accessible content.',
+    description="Write an engaging X post about the latest AI news from today, based on the research analyst’s summary. Draw inspiration from those articles.",
+    expected_output='A short X post formatted in with engaging, informative, and accessible content.',
     agent=writer,
-    output_file='linkedin_post.txt',
+    output_file='x_post.txt',
 )
 
 # Assemble a crew with planning enabled
@@ -76,9 +74,16 @@ _output = crew.kickoff()
 print(_output.raw)
 
 if _output.raw:
-    _client:TweepyTwitterClient = TweepyTwitterClient()
-    _client.load()
-    _client.send_tweet(_output.raw)
+    client = XApiClient(
+        consumer_key=os.environ.get("X_CONSUMER_API_KEY"),
+        consumer_secret=os.environ.get("X_CONSUMER_API_KEY_SECRET"),
+        access_token=os.environ.get("X_ACCESS_TOKEN"),
+        access_token_secret=os.environ.get("X_ACCESS_TOKEN_SECRET")
+    )
+    if client.post_tweet(_output.raw):
+        print('Tweet posted successfully.')
+    else:
+        print('Failed to post tweet.')
 else:
     print('No output to tweet.')
 

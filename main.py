@@ -1,7 +1,6 @@
-# main.py
-
 import os
 import langchain_openai
+from typing import Literal
 from openai import OpenAI
 from x_api_client import XApiClient
 from langgraph.graph import Graph, START, END
@@ -84,20 +83,22 @@ def clean_up_the_post(post: str) -> str:
     post = post.encode("ascii", "ignore").decode("ascii")
 
     return post
-
+def switch_between_linkedin_and_twitter(post: str) -> Literal["LinkedIn", "X"]:
+    return "X"
 
 def post_to_x(post: str) -> str:
     try:
-        client = XApiClient(
-            consumer_key=os.environ.get("X_CONSUMER_API_KEY"),
-            consumer_secret=os.environ.get("X_CONSUMER_API_KEY_SECRET"),
-            access_token=os.environ.get("X_ACCESS_TOKEN"),
-            access_token_secret=os.environ.get("X_ACCESS_TOKEN_SECRET"),
-        )
-        if client.post_tweet(post):
-            print("Tweet posted successfully.")
-        else:
-            print("Failed to post tweet.")
+        print("X post:")
+        # client = XApiClient(
+        #     consumer_key=os.environ.get("X_CONSUMER_API_KEY"),
+        #     consumer_secret=os.environ.get("X_CONSUMER_API_KEY_SECRET"),
+        #     access_token=os.environ.get("X_ACCESS_TOKEN"),
+        #     access_token_secret=os.environ.get("X_ACCESS_TOKEN_SECRET"),
+        # )
+        # if client.post_tweet(post):
+        #     print("Tweet posted successfully.")
+        # else:
+        #     print("Failed to post tweet.")
     except Exception as e:
         print("Error posting to LinkedIn:", e)
         raise e
@@ -105,27 +106,28 @@ def post_to_x(post: str) -> str:
 
 def post_to_linkedin(post: str) -> str:
     try:
-        client = RestliClient()
-        ugc_posts_create_response = client.create(
-            resource_path=UGC_POSTS_RESOURCE,
-            entity={
-                "author": "urn:li:person:78j8u43rgt79h9",
-                "lifecycleState": "PUBLISHED",
-                "specificContent": {
-                    "com.linkedin.ugc.ShareContent": {
-                        "shareCommentary": {
-                            "text": "Sample text post created with /ugcPosts API"
-                        },
-                        "shareMediaCategory": "NONE",
-                    }
-                },
-                "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
-            },
-            access_token=LINKEDIN_ACCESS_TOKEN,
-        )
-        print(
-            f"Successfully created post using /ugcPosts: {ugc_posts_create_response.entity_id}"
-        )
+        print("LinkedIn post:")
+        # client = RestliClient()
+        # ugc_posts_create_response = client.create(
+        #     resource_path=UGC_POSTS_RESOURCE,
+        #     entity={
+        #         "author": "urn:li:person:78j8u43rgt79h9",
+        #         "lifecycleState": "PUBLISHED",
+        #         "specificContent": {
+        #             "com.linkedin.ugc.ShareContent": {
+        #                 "shareCommentary": {
+        #                     "text": "Sample text post created with /ugcPosts API"
+        #                 },
+        #                 "shareMediaCategory": "NONE",
+        #             }
+        #         },
+        #         "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
+        #     },
+        #     access_token=LINKEDIN_ACCESS_TOKEN,
+        # )
+        # print(
+        #     f"Successfully created post using /ugcPosts: {ugc_posts_create_response.entity_id}"
+        # )
     except Exception as e:
         print("Error posting to LinkedIn:", e)
         raise e
@@ -140,7 +142,8 @@ def main():
     graph.add_node("TopStoriesSelector", select_top_stories)
     graph.add_node("LinkedInPostCreator", create_x_post)
     graph.add_node("CleanUpThePost", clean_up_the_post)
-    graph.add_node("LinkedInPoster", post_to_linkedin)
+    graph.add_node("LinkedIn", post_to_linkedin)
+    graph.add_node("X", post_to_x)
 
     # Connect nodes so that:
     # NewsFetcher -> TopStoriesSelector -> LinkedInPostCreator -> LinkedInPoster
@@ -148,8 +151,9 @@ def main():
     graph.add_edge(start_key="NewsFetcher", end_key="TopStoriesSelector")
     graph.add_edge(start_key="TopStoriesSelector", end_key="LinkedInPostCreator")
     graph.add_edge(start_key="LinkedInPostCreator", end_key="CleanUpThePost")
-    graph.add_edge(start_key="CleanUpThePost", end_key="LinkedInPoster")
-    graph.add_edge(start_key="LinkedInPoster", end_key=END)
+    graph.add_conditional_edges("CleanUpThePost", switch_between_linkedin_and_twitter)
+    graph.add_edge(start_key="LinkedIn", end_key=END)
+    graph.add_edge(start_key="X", end_key=END)
 
     # Run the graph to execute the pipeline.
     _app = graph.compile()
